@@ -199,12 +199,24 @@ namespace GitRCFS
             return fileHash.ToArray();
         }
 
+        public RcfsNode ResolvePath(string[] splitPath)
+        {
+            var curNode = this;
+            for (int i = 0; i < splitPath.Length; i++)
+            {
+                curNode = curNode.GetChild(splitPath[i]);
+            }
+            return curNode;
+        }
+
+        public RcfsNode ResolvePath(string path) => ResolvePath(path.Split("/"));
+
         public RcfsNode GetChild(string name)
         {
             if (!IsDirectory) throw new InvalidOperationException("Cannot access children of a file");
             if (_files.ContainsKey(name)) return _files[name];
             if (_folders.ContainsKey(name)) return _folders[name];
-            throw new InvalidOperationException("The specified node name does not exist");
+            throw new InvalidOperationException($"The specified node \"{name}\" does not exist");
         }
         public RcfsNode[] GetFiles()
         {
@@ -232,7 +244,7 @@ namespace GitRCFS
         }
 
         /// <summary>
-        /// A shorthand way to get a path / file
+        /// A shorthand way to get a path or file
         /// </summary>
         /// <param name="node"></param>
         /// <param name="name"></param>
@@ -242,9 +254,9 @@ namespace GitRCFS
             return node.GetChild(name);
         }
         /// <summary>
-        /// A shorthand way to get a path / file
+        /// A shorthand way to get a path or file
         /// </summary>
-        /// <param name="name"></param>
-        public RcfsNode this[string name] => GetChild(name);
+        /// <param name="path"></param>
+        public RcfsNode this[string path] => ResolvePath(path);
     }
 }

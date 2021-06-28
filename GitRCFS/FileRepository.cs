@@ -26,7 +26,7 @@ namespace GitRCFS
         /// <param name="branch">Branch Name</param>
         /// <param name="accessToken">Git authentication token, (if nessecary)</param>
         /// <param name="updateFrequencyMs">How frequently to update the repository, set to -1 to disable</param>
-        public FileRepository(string repoUrl, string branch = "main", string accessToken = null, int updateFrequencyMs = 60000) : base(true, "rcfs-root-node")
+        public FileRepository(string repoUrl, string branch = "main", string accessToken = null, int updateFrequencyMs = 30000) : base(true, "rcfs-root-node")
         {
             _cred = (url, fromUrl, types) => 
                 new UsernamePasswordCredentials()
