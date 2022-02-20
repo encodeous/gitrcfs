@@ -13,12 +13,19 @@ namespace GitRCFS
     {
         private readonly Repository _repo;
         private readonly Remote _remote;
-        public readonly string Branch;
         private readonly CredentialsHandler _cred;
         private readonly FetchOptions _fetchOptions;
         private bool _isDisposed = false;
-        public string Commit { get; private set; }
         
+        /// <summary>
+        /// The current commit
+        /// </summary>
+        public string Commit { get; private set; }
+        /// <summary>
+        /// The current branch
+        /// </summary>
+        public readonly string Branch;
+
         /// <summary>
         /// Creates a git repository that reflects the changes made to remote.
         /// </summary>
@@ -89,6 +96,9 @@ namespace GitRCFS
             }
         }
 
+        /// <summary>
+        /// Dispose the class and stop checking for updates
+        /// </summary>
         public void Dispose()
         {
             if (!_isDisposed)

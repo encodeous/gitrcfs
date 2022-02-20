@@ -10,14 +10,16 @@ namespace GitRCFS
 {
     public class RcfsNode
     {
-        internal Dictionary<string, RcfsNode> _files = new (), _folders = new();
+        internal Dictionary<string, RcfsNode> _files = new (), _dirs = new();
+        public IEnumerable<string> Files => _files.Keys;
+        public IEnumerable<string> Directories => _dirs.Keys;
         internal byte[] fileBytes;
         internal byte[] fileHash;
         internal string rootPath;
         public readonly string RelativePath = "";
         public readonly string FileSystemPath;
-        public readonly bool IsDirectory;
-        public readonly string Name;
+        public bool IsDirectory { get; }
+        public string Name { get; }
         public bool IsDeleted { get; private set; } = false;
         internal RcfsNode(bool isDirectory, string rootPath, string relativePath)
         {
@@ -90,35 +92,35 @@ namespace GitRCFS
                     _files[added] = val;
                 }
 
-                // folders
+                // directories
                 
-                // delete removed folders
+                // delete removed directories
                 foreach (var deleted in (
-                    from y in _folders
+                    from y in _dirs
                     where !relDir.Contains(y.Key)
                     select y).ToList())
                 {
                     updated = true;
                     deleted.Value.RemoveNode();
-                    _folders.Remove(deleted.Key);
+                    _dirs.Remove(deleted.Key);
                 }
-                // update existing folders
+                // update existing directories
                 foreach (var file in (
                     from x in relDir
-                    where _folders.ContainsKey(x)
+                    where _dirs.ContainsKey(x)
                     select x).ToList())
                 {
-                    updated |= _folders[file].ApplyChanges();
+                    updated |= _dirs[file].ApplyChanges();
                 }
-                // add new folders
+                // add new directories
                 foreach (var added in (
                     from x in relDir
-                    where !_folders.ContainsKey(x)
+                    where !_dirs.ContainsKey(x)
                     select x).ToList())
                 {
                     var val = new RcfsNode(true, rootPath, Path.Combine(RelativePath, added));
                     updated |= val.ApplyChanges();
-                    _folders[added] = val;
+                    _dirs[added] = val;
                 }
             }
             else
@@ -161,44 +163,81 @@ namespace GitRCFS
                 {
                     f.Value.RemoveNode();
                 }
-                foreach (var f in _folders)
+                foreach (var f in _dirs)
                 {
                     f.Value.RemoveNode();
                 }
             }
         }
-
+        /// <summary>
+        /// A delegate that is called when the values of a file is changed
+        /// </summary>
         public delegate void NodeChangedDelegate(byte[] oldValue, byte[] newValue);
 
+        /// <summary>
+        /// Called when the contents of this current file is changed
+        /// </summary>
         public event NodeChangedDelegate ContentsChanged;
         
+        /// <summary>
+        /// A delegate that is called when the node is updated in some way
+        /// </summary>
         public delegate void NodeUpdatedDelegate();
+        /// <summary>
+        /// Called when the current node is deleted
+        /// </summary>
         public event NodeUpdatedDelegate NodeRemoved;
 
+        /// <summary>
+        /// Gets the raw binary data in this file
+        /// </summary>
+        /// <returns></returns>
+        /// <exception cref="InvalidOperationException"></exception>
         public byte[] GetData()
         {
             if (IsDirectory) throw new InvalidOperationException("Cannot access data of a directory");
             return fileBytes.ToArray();
         }
 
+        /// <summary>
+        /// Tries to deserialize the file using System.Text.Json
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <returns></returns>
+        /// <exception cref="InvalidOperationException"></exception>
         public T DeserializeData<T>()
         {
             if (IsDirectory) throw new InvalidOperationException("Cannot access data of a directory");
             return JsonSerializer.Deserialize<T>(fileBytes);
         }
         
+        /// <summary>
+        /// Gets the file as a string encoded in UTF-8
+        /// </summary>
+        /// <returns></returns>
+        /// <exception cref="InvalidOperationException"></exception>
         public string GetStringData()
         {
             if (IsDirectory) throw new InvalidOperationException("Cannot access data of a directory");
             return Encoding.UTF8.GetString(fileBytes);
         }
 
+        /// <summary>
+        /// Gets the SHA-256 hash of the current file
+        /// </summary>
+        /// <returns></returns>
+        /// <exception cref="InvalidOperationException"></exception>
         public byte[] GetHash()
         {
             if (IsDirectory) throw new InvalidOperationException("Cannot access data of a directory");
             return fileHash.ToArray();
         }
 
+        /// <summary>
+        /// Resolves a path
+        /// </summary>
+        /// <param name="splitPath">The path segments</param>
+        /// <returns></returns>
         public RcfsNode ResolvePath(string[] splitPath)
         {
             var curNode = this;
@@ -209,29 +248,56 @@ namespace GitRCFS
             return curNode;
         }
 
+        /// <summary>
+        /// Resolves a path with path segments separated with "/"
+        /// </summary>
+        /// <param name="path"></param>
+        /// <returns></returns>
         public RcfsNode ResolvePath(string path) => ResolvePath(path.Split("/"));
 
+        /// <summary>
+        /// Gets a direct descendant of the current node
+        /// </summary>
+        /// <param name="name"></param>
+        /// <returns></returns>
+        /// <exception cref="InvalidOperationException"></exception>
         public RcfsNode GetChild(string name)
         {
+            if (name == string.Empty) return this;
             if (!IsDirectory) throw new InvalidOperationException("Cannot access children of a file");
             if (_files.ContainsKey(name)) return _files[name];
-            if (_folders.ContainsKey(name)) return _folders[name];
+            if (_dirs.ContainsKey(name)) return _dirs[name];
             throw new InvalidOperationException($"The specified node \"{name}\" does not exist");
         }
+        /// <summary>
+        /// Gets all the direct descendants of the current directory that is a file
+        /// </summary>
+        /// <returns></returns>
+        /// <exception cref="InvalidOperationException"></exception>
         public RcfsNode[] GetFiles()
         {
             if (!IsDirectory) throw new InvalidOperationException("Cannot access children of a file");
             return _files.Values.ToArray();
         }
-        public RcfsNode[] GetFolders()
+        /// <summary>
+        /// Gets all the direct descendants of the current directory that is a directory
+        /// </summary>
+        /// <returns></returns>
+        /// <exception cref="InvalidOperationException"></exception>
+        public RcfsNode[] GetDirectories()
         {
             if (!IsDirectory) throw new InvalidOperationException("Cannot access children of a file");
-            return _folders.Values.ToArray();
+            return _dirs.Values.ToArray();
         }
+        /// <summary>
+        /// Gets all the direct descendants of the current directory
+        /// </summary>
+        /// <returns></returns>
+        /// <exception cref="InvalidOperationException"></exception>
         public RcfsNode[] GetChildren()
         {
             if (!IsDirectory) throw new InvalidOperationException("Cannot access children of a file");
-            return _folders.Values.Union(_files.Values).ToArray();
+            return _dirs.Values.Union(_files.Values).ToArray();
         }
         /// <summary>
         /// Gets the content of the file

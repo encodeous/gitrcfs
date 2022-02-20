@@ -2,6 +2,16 @@
 
     <PropertyGroup>
         <TargetFramework>net5.0</TargetFramework>
+        <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+        <Authors>Encodeous</Authors>
+        <Description>Offers a lightweight option to synchronize an application's configuration and data files with a remote git repository. This library provides a simple api to use a git repository to access readonly configuration files.</Description>
+        <PackageProjectUrl>https://github.com/encodeous/gitrcfs</PackageProjectUrl>
+        <RepositoryUrl>https://github.com/encodeous/gitrcfs</RepositoryUrl>
+        <Title>GitRCFS - Git Remote Config Filesystem</Title>
+        <Version>0.1.0</Version>
+        <PackageLicenseExpression>MIT</PackageLicenseExpression>
+        <PackageTags>sync;github;git;config;configuration;filesystem</PackageTags>
+        <AllowedOutputExtensionsInPackageBuildOutputFolder>$(AllowedOutputExtensionsInPackageBuildOutputFolder);.pdb</AllowedOutputExtensionsInPackageBuildOutputFolder>
     </PropertyGroup>
 
     <ItemGroup>

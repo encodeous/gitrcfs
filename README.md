@@ -17,7 +17,7 @@ The GitRCFS library is extremely simple to use.
 
 First create a `FileRepository`,
 
-```c#
+```csharp
 var repo = new FileRepository("https://github.com/encodeous/gitrcfstest",
     branch: "main", accessToken: "<your-token>", updateFrequencyMs: 5000);
 ```
@@ -35,9 +35,9 @@ To access a file in the filesystem, there are 2 main ways:
    var configFile = repo["config-dir/config.json"];
    ```
 
-All files and folders are of the type `RcfsNode`
+All files and directories are of the type `RcfsNode`
 
-Through this type, it is possible to listen for file changes, iterate the children of folders, and get the data from files.
+Through this type, it is possible to listen for file changes, iterate the children of directories, and get the data from files.
 
 ## `Samples`
 
