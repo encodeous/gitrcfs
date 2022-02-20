@@ -9,4 +9,8 @@
       <ProjectReference Include="..\GitRCFS\GitRCFS.csproj" />
     </ItemGroup>
 
+    <ItemGroup>
+      <PackageReference Include="LibGit2Sharp" Version="0.27.0-preview-0175" />
+    </ItemGroup>
+
 </Project>
