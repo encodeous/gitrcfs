@@ -1,21 +1,26 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <TargetFramework>net5.0</TargetFramework>
+        <TargetFramework>net8.0</TargetFramework>
         <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
         <Authors>Encodeous</Authors>
-        <Description>Offers a lightweight option to synchronize an application's configuration and data files with a remote git repository. This library provides a simple api to use a git repository to access readonly configuration files.</Description>
+        <Description>Offers a lightweight option to synchronize an application's configuration and data files with a remote git repository.</Description>
         <PackageProjectUrl>https://github.com/encodeous/gitrcfs</PackageProjectUrl>
         <RepositoryUrl>https://github.com/encodeous/gitrcfs</RepositoryUrl>
         <Title>GitRCFS - Git Remote Config Filesystem</Title>
-        <Version>0.1.0</Version>
+        <Version>1.1.0</Version>
         <PackageLicenseExpression>MIT</PackageLicenseExpression>
         <PackageTags>sync;github;git;config;configuration;filesystem</PackageTags>
         <AllowedOutputExtensionsInPackageBuildOutputFolder>$(AllowedOutputExtensionsInPackageBuildOutputFolder);.pdb</AllowedOutputExtensionsInPackageBuildOutputFolder>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
     </PropertyGroup>
 
     <ItemGroup>
-      <PackageReference Include="LibGit2Sharp" Version="0.27.0-preview-0175" />
+        <None Include="../README.md" Pack="true" PackagePath="\"/>
+    </ItemGroup>
+
+    <ItemGroup>
+      <PackageReference Include="LibGit2Sharp" Version="0.29.0" />
     </ItemGroup>
 
 </Project>
