@@ -158,6 +158,7 @@ namespace GitRCFS
 
                     fileHash = hash;
                     fileBytes = tbytes;
+                    updated = true;
 
                     if (oldFile is not null)
                     {
@@ -166,7 +167,7 @@ namespace GitRCFS
                 }
 
                 if(updated)
-                    NodeChanged.Invoke();
+                    NodeChanged?.Invoke();
                 
                 return updated;
             }
@@ -185,6 +186,7 @@ namespace GitRCFS
                 IsDeleted = true;
                 _logger.LogTrace("Removed node {Name} from RCFS tree", Name);
                 NodeRemoved?.Invoke();
+                NodeChanged?.Invoke();
                 foreach (var f in _files)
                 {
                     f.Value.RemoveNode();
