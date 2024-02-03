@@ -8,7 +8,7 @@
         <PackageProjectUrl>https://github.com/encodeous/gitrcfs</PackageProjectUrl>
         <RepositoryUrl>https://github.com/encodeous/gitrcfs</RepositoryUrl>
         <Title>GitRCFS - Git Remote Config Filesystem</Title>
-        <Version>1.2.0</Version>
+        <Version>1.3.0</Version>
         <PackageLicenseExpression>MIT</PackageLicenseExpression>
         <PackageTags>sync;github;git;config;configuration;filesystem</PackageTags>
         <AllowedOutputExtensionsInPackageBuildOutputFolder>$(AllowedOutputExtensionsInPackageBuildOutputFolder);.pdb</AllowedOutputExtensionsInPackageBuildOutputFolder>

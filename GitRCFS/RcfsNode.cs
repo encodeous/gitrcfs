@@ -165,6 +165,9 @@ namespace GitRCFS
                     }
                 }
 
+                if(updated)
+                    NodeChanged.Invoke();
+                
                 return updated;
             }
             catch (Exception e)
@@ -192,15 +195,26 @@ namespace GitRCFS
                 }
             }
         }
+        
+        /// <summary>
+        /// A delegate that is called when the values of a node is changed
+        /// </summary>
+        public delegate void NodeChangedDelegate();
+
+        /// <summary>
+        /// Called when the contents of this current node is changed
+        /// </summary>
+        public event NodeChangedDelegate NodeChanged;
+        
         /// <summary>
         /// A delegate that is called when the values of a file is changed
         /// </summary>
-        public delegate void NodeChangedDelegate(byte[] oldValue, byte[] newValue);
+        public delegate void NodeContentChangedDelegate(byte[] oldValue, byte[] newValue);
 
         /// <summary>
         /// Called when the contents of this current file is changed
         /// </summary>
-        public event NodeChangedDelegate ContentsChanged;
+        public event NodeContentChangedDelegate ContentsChanged;
         
         /// <summary>
         /// A delegate that is called when the node is updated in some way
