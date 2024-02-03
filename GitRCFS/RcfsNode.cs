@@ -5,6 +5,8 @@ using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace GitRCFS
 {
@@ -18,11 +20,15 @@ namespace GitRCFS
         internal string rootPath;
         public readonly string RelativePath = "";
         public readonly string FileSystemPath;
+        private ILogger<RcfsNode> _logger;
         public bool IsDirectory { get; }
         public string Name { get; }
         public bool IsDeleted { get; private set; } = false;
-        internal RcfsNode(bool isDirectory, string rootPath, string relativePath)
+        internal RcfsNode(bool isDirectory, string rootPath, string relativePath, ILogger<RcfsNode> logger)
         {
+            if (logger is null)
+                logger = new NullLogger<RcfsNode>();
+            _logger = logger;
             IsDirectory = isDirectory;
             this.rootPath = rootPath;
             RelativePath = relativePath;
@@ -36,121 +42,137 @@ namespace GitRCFS
                 Name = Path.GetFileName(RelativePath);
             }
         }
-        internal RcfsNode(bool isDirectory, string name)
+        internal RcfsNode(bool isDirectory, string name, ILogger<RcfsNode> logger)
         {
+            if (logger is null)
+                logger = new NullLogger<RcfsNode>();
+            _logger = logger;
             Name = name;
             IsDirectory = isDirectory;
         }
 
         internal bool ApplyChanges()
         {
-            bool updated = false;
-            var path = Path.Combine(rootPath, RelativePath);
-            if (File.GetAttributes(path).HasFlag(FileAttributes.Directory))
+            try
             {
-                var di = new DirectoryInfo(path);
-                if (!di.Exists)
+                bool updated = false;
+                var path = Path.Combine(rootPath, RelativePath);
+                if (File.GetAttributes(path).HasFlag(FileAttributes.Directory))
                 {
-                    RemoveNode();
-                    return true;
+                    var di = new DirectoryInfo(path);
+                    if (!di.Exists)
+                    {
+                        RemoveNode();
+                        return true;
+                    }
+
+                    var files = di.GetFiles();
+                    var dirs = di.GetDirectories();
+
+                    var relFile = files.Select(x => x.Name).ToHashSet();
+                    var relDir = dirs.Select(x => x.Name).ToHashSet();
+
+                    // files
+
+                    // delete removed files
+                    foreach (var deleted in (
+                                 from y in _files
+                                 where !relFile.Contains(y.Key)
+                                 select y).ToList())
+                    {
+                        updated = true;
+                        deleted.Value.RemoveNode();
+                        _files.Remove(deleted.Key);
+                    }
+
+                    // update existing files
+                    foreach (var file in (
+                                 from x in relFile
+                                 where _files.ContainsKey(x)
+                                 select x).ToList())
+                    {
+                        updated |= _files[file].ApplyChanges();
+                    }
+
+                    // add new files
+                    foreach (var added in (
+                                 from x in relFile
+                                 where !_files.ContainsKey(x)
+                                 select x).ToList())
+                    {
+                        var val = new RcfsNode(false, rootPath, Path.Combine(RelativePath, added), _logger);
+                        updated |= val.ApplyChanges();
+                        _files[added] = val;
+                    }
+
+                    // directories
+
+                    // delete removed directories
+                    foreach (var deleted in (
+                                 from y in _dirs
+                                 where !relDir.Contains(y.Key)
+                                 select y).ToList())
+                    {
+                        updated = true;
+                        deleted.Value.RemoveNode();
+                        _dirs.Remove(deleted.Key);
+                    }
+
+                    // update existing directories
+                    foreach (var file in (
+                                 from x in relDir
+                                 where _dirs.ContainsKey(x)
+                                 select x).ToList())
+                    {
+                        updated |= _dirs[file].ApplyChanges();
+                    }
+
+                    // add new directories
+                    foreach (var added in (
+                                 from x in relDir
+                                 where !_dirs.ContainsKey(x)
+                                 select x).ToList())
+                    {
+                        var val = new RcfsNode(true, rootPath, Path.Combine(RelativePath, added), _logger);
+                        updated |= val.ApplyChanges();
+                        _dirs[added] = val;
+                    }
+                }
+                else
+                {
+                    var fi = new FileInfo(path);
+                    if (!fi.Exists)
+                    {
+                        RemoveNode();
+                        return true;
+                    }
+
+                    var tbytes = File.ReadAllBytes(path);
+                    var hash = SHA256.HashData(tbytes);
+                    if (fileHash is not null && hash.SequenceEqual(fileHash))
+                    {
+                        return false;
+                    }
+
+                    var oldFile = fileBytes;
+
+                    fileHash = hash;
+                    fileBytes = tbytes;
+
+                    if (oldFile is not null)
+                    {
+                        ContentsChanged?.Invoke(oldFile, tbytes);
+                    }
                 }
 
-                var files = di.GetFiles();
-                var dirs = di.GetDirectories();
-
-                var relFile = files.Select(x => x.Name).ToHashSet();
-                var relDir = dirs.Select(x => x.Name).ToHashSet();
-                
-                // files
-                
-                // delete removed files
-                foreach (var deleted in (
-                    from y in _files
-                    where !relFile.Contains(y.Key)
-                    select y).ToList())
-                {
-                    updated = true;
-                    deleted.Value.RemoveNode();
-                    _files.Remove(deleted.Key);
-                }
-                // update existing files
-                foreach (var file in (
-                    from x in relFile
-                    where _files.ContainsKey(x)
-                    select x).ToList())
-                {
-                    updated |= _files[file].ApplyChanges();
-                }
-                // add new files
-                foreach (var added in (
-                    from x in relFile
-                    where !_files.ContainsKey(x)
-                    select x).ToList())
-                {
-                    var val = new RcfsNode(false, rootPath, Path.Combine(RelativePath, added));
-                    updated |= val.ApplyChanges();
-                    _files[added] = val;
-                }
-
-                // directories
-                
-                // delete removed directories
-                foreach (var deleted in (
-                    from y in _dirs
-                    where !relDir.Contains(y.Key)
-                    select y).ToList())
-                {
-                    updated = true;
-                    deleted.Value.RemoveNode();
-                    _dirs.Remove(deleted.Key);
-                }
-                // update existing directories
-                foreach (var file in (
-                    from x in relDir
-                    where _dirs.ContainsKey(x)
-                    select x).ToList())
-                {
-                    updated |= _dirs[file].ApplyChanges();
-                }
-                // add new directories
-                foreach (var added in (
-                    from x in relDir
-                    where !_dirs.ContainsKey(x)
-                    select x).ToList())
-                {
-                    var val = new RcfsNode(true, rootPath, Path.Combine(RelativePath, added));
-                    updated |= val.ApplyChanges();
-                    _dirs[added] = val;
-                }
+                return updated;
             }
-            else
+            catch (Exception e)
             {
-                var fi = new FileInfo(path);
-                if (!fi.Exists)
-                {
-                    RemoveNode();
-                    return true;
-                }
-
-                var tbytes = File.ReadAllBytes(path);
-                var hash = SHA256.HashData(tbytes);
-                if (fileHash is not null && hash.SequenceEqual(fileHash))
-                {
-                    return false;
-                }
-
-                var oldFile = fileBytes;
-
-                fileHash = hash;
-                fileBytes = tbytes;
-                
-                if (oldFile is not null)
-                {
-                    ContentsChanged?.Invoke(oldFile, tbytes);
-                }
+                _logger.LogError(e, "Failed applying changes to RCFS node {Name}", Name);
             }
 
-            return updated;
+            return false;
         }
         
         internal void RemoveNode()
@@ -158,6 +180,7 @@ namespace GitRCFS
             if (!IsDeleted)
             {
                 IsDeleted = true;
+                _logger.LogTrace("Removed node {Name} from RCFS tree", Name);
                 NodeRemoved?.Invoke();
                 foreach (var f in _files)
                 {

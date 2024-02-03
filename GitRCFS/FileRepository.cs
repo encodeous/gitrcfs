@@ -6,6 +6,8 @@ using System.Text;
 using System.Threading.Tasks;
 using LibGit2Sharp;
 using LibGit2Sharp.Handlers;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace GitRCFS
 {
@@ -16,6 +18,7 @@ namespace GitRCFS
         private readonly CredentialsHandler _cred;
         private readonly FetchOptions _fetchOptions;
         private bool _isDisposed = false;
+        private ILogger<FileRepository> _logger;
         
         /// <summary>
         /// The current commit
@@ -33,8 +36,14 @@ namespace GitRCFS
         /// <param name="branch">Branch Name</param>
         /// <param name="accessToken">Git authentication token, (if nessecary)</param>
         /// <param name="updateFrequencyMs">How frequently to update the repository, set to -1 to disable</param>
-        public FileRepository(string repoUrl, string branch = "main", string accessToken = null, int updateFrequencyMs = 30000) : base(true, "rcfs-root-node")
+        /// <param name="logger">configure a logger, as opposed to the default null logger</param>
+        public FileRepository(string repoUrl, string branch = "main", string accessToken = null, int updateFrequencyMs = 30000, ILogger<FileRepository> logger = null) : base(true, "rcfs-root-node", logger)
         {
+            if (logger is null)
+                logger = new NullLogger<FileRepository>();
+
+            _logger = logger;
+            
             _cred = (url, fromUrl, types) => 
                 new UsernamePasswordCredentials()
                 {
@@ -49,6 +58,7 @@ namespace GitRCFS
             _fetchOptions.Prune = true;
             if (!Directory.Exists(rootPath))
             {
+                _logger.LogDebug("Creating RCFS folder from \"{Path}\"", repoUrl);
                 var co = new CloneOptions();
                 co.IsBare = false;
                 co.RecurseSubmodules = true;
@@ -59,6 +69,7 @@ namespace GitRCFS
                     co.CredentialsProvider = _cred;
                 }
 
+                _logger.LogDebug("Cloning contents");
                 Repository.Clone(repoUrl, rootPath, co);
             }
 
@@ -73,6 +84,7 @@ namespace GitRCFS
                     while (!_isDisposed)
                     {
                         await Task.Delay(updateFrequencyMs);
+                        _logger.LogDebug("Updating RCFS folder contents");
                         Update();
                     }
                 });
@@ -84,15 +96,23 @@ namespace GitRCFS
         /// </summary>
         public void Update()
         {
-            var refSpecs = _remote.FetchRefSpecs.Select(x => x.Specification);
-            Commands.Fetch(_repo, _remote.Name, refSpecs, _fetchOptions, "");
-            var br = _repo.Branches[_remote.Name + "/" + Branch];
-            _repo.Reset(ResetMode.Hard, br.Tip);
-            _repo.RemoveUntrackedFiles();
-            if (Commit != _repo.Head.Tip.Sha)
+            try
             {
-                Commit = _repo.Head.Tip.Sha;
-                ApplyChanges();
+                var refSpecs = _remote.FetchRefSpecs.Select(x => x.Specification);
+                Commands.Fetch(_repo, _remote.Name, refSpecs, _fetchOptions, "");
+                var br = _repo.Branches[_remote.Name + "/" + Branch];
+                _repo.Reset(ResetMode.Hard, br.Tip);
+                _repo.RemoveUntrackedFiles();
+                if (Commit != _repo.Head.Tip.Sha)
+                {
+                    _logger.LogDebug("RCFS Head SHA changed from {CurCommit} to {NewCommit}", Commit, _repo.Head.Tip.Sha);
+                    Commit = _repo.Head.Tip.Sha;
+                    ApplyChanges();
+                }
+            }
+            catch (Exception e)
+            {
+                _logger.LogError(e, "Failed updating RCFS repository {Path}", _remote.Url);
             }
         }
 
