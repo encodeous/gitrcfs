@@ -2,7 +2,7 @@
 
     <PropertyGroup>
         <OutputType>Exe</OutputType>
-        <TargetFramework>net5.0</TargetFramework>
+        <TargetFramework>net8.0</TargetFramework>
     </PropertyGroup>
 
     <ItemGroup>
@@ -10,7 +10,7 @@
     </ItemGroup>
 
     <ItemGroup>
-      <PackageReference Include="LibGit2Sharp" Version="0.27.0-preview-0175" />
+      <PackageReference Include="LibGit2Sharp" Version="0.29.0" />
     </ItemGroup>
 
 </Project>

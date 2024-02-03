@@ -27,3 +27,9 @@ using GitRCFS;
         Console.WriteLine($"New file content: \"{file.GetStringData()}\"");
     };
 }
+// sample 4
+{
+    // simple use case to read data from a repo when logged in:
+    var repo = new FileRepository("https://github.com/encodeous/gitrcfstest", username: "user", password: "password");
+    Console.WriteLine($"File content from repo: \"{repo["folder/file-in-folder.txt"].GetStringData()}\"");
+}

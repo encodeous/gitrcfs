@@ -34,27 +34,29 @@ namespace GitRCFS
         /// </summary>
         /// <param name="repoUrl">Remote repository url</param>
         /// <param name="branch">Branch Name</param>
-        /// <param name="accessToken">Git authentication token, (if nessecary)</param>
+        /// <param name="username">Git authentication username, (if necessary)</param>
+        /// <param name="password">Git authentication password, (if necessary)</param>
         /// <param name="updateFrequencyMs">How frequently to update the repository, set to -1 to disable</param>
         /// <param name="logger">configure a logger, as opposed to the default null logger</param>
-        public FileRepository(string repoUrl, string branch = "main", string accessToken = null, int updateFrequencyMs = 30000, ILogger<FileRepository> logger = null) : base(true, "rcfs-root-node", logger)
+        public FileRepository(string repoUrl, string branch = "main", string username = null, string password = null, int updateFrequencyMs = 30000, ILogger<FileRepository> logger = null) : base(true, "rcfs-root-node", logger)
         {
             if (logger is null)
                 logger = new NullLogger<FileRepository>();
 
             _logger = logger;
             
-            _cred = (url, fromUrl, types) => 
+            _cred = (_, _, _) => 
                 new UsernamePasswordCredentials()
                 {
-                    Username = accessToken,
-                    Password = ""
+                    Username = username,
+                    Password = password
                 };
             Branch = branch;
             var repoHash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(repoUrl)));
             rootPath = ".gitrcfs-" + repoHash.Substring(0, 10) + "-" + branch;
             _fetchOptions = new FetchOptions();
-            _fetchOptions.CredentialsProvider = _cred;
+            if(username != null && password != null)
+                _fetchOptions.CredentialsProvider = _cred;
             _fetchOptions.Prune = true;
             if (!Directory.Exists(rootPath))
             {
@@ -62,12 +64,10 @@ namespace GitRCFS
                 var co = new CloneOptions();
                 co.IsBare = false;
                 co.RecurseSubmodules = true;
-                co.FetchOptions = _fetchOptions;
+                if(username != null && password != null)
+                    co.FetchOptions.CredentialsProvider = _cred;
+                co.FetchOptions.Prune = true;
                 co.BranchName = branch;
-                if (accessToken is not null)
-                {
-                    co.CredentialsProvider = _cred;
-                }
 
                 _logger.LogDebug("Cloning contents");
                 Repository.Clone(repoUrl, rootPath, co);
